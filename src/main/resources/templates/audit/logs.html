@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: layout('Security Audit', ~{::#page-content})}">
+<body>
+<div id="page-content">
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">Security Audit Trail</h2>
+            <p class="text-secondary small mb-0">Immutable compliance log of authentication events, cryptographic operations, and access records</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge badge-info px-3 py-2">
+                <i class="bi bi-clock-history me-1"></i> Retention: 90 Days
+            </span>
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div th:if="${events.empty}" class="sv-card p-5 text-center my-4">
+        <i class="bi bi-shield-check fs-1 text-secondary opacity-50 d-block mb-2"></i>
+        <h5 class="fw-bold text-white mb-1">No Audit Records Yet</h5>
+        <p class="text-secondary small mb-0">Security and authentication events will appear here chronologically.</p>
+    </div>
+
+    <!-- Audit Events Table -->
+    <div th:unless="${events.empty}" class="sv-card overflow-hidden mb-4">
+        <div class="table-responsive">
+            <table class="sv-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Event Type</th>
+                        <th>Activity Description</th>
+                        <th>IP Address</th>
+                        <th>User Agent</th>
+                        <th>Severity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="event : ${events}">
+                        <td class="small font-monospace text-secondary text-nowrap">
+                            <span th:text="${#temporals.format(event.createdAt, 'yyyy-MM-dd HH:mm:ss')}">2026-10-16 19:00:00</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-secondary" th:text="${event.eventName}">Successful Login</span>
+                        </td>
+                        <td class="text-white small">
+                            <span th:text="${event.description}">User logged in</span>
+                        </td>
+                        <td class="small font-monospace text-secondary" th:text="${event.ipAddress}">127.0.0.1</td>
+                        <td class="small text-secondary" style="max-width: 250px;">
+                            <span class="d-inline-block text-truncate w-100" th:text="${event.userAgent}" th:title="${event.userAgent}">Mozilla/5.0...</span>
+                        </td>
+                        <td>
+                            <span class="badge" th:classappend="'badge-' + ${event.badgeClass}" th:text="${event.severity}">INFO</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="p-3 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center" th:if="${totalPages > 1}">
+            <div class="small text-secondary">
+                Page <span th:text="${currentPage + 1}">1</span> of <span th:text="${totalPages}">1</span> (<span th:text="${totalElements}">0</span> total events)
+            </div>
+            <div class="btn-group btn-group-sm">
+                <a th:href="@{/audit(page=${currentPage - 1})}" 
+                   class="btn btn-secondary" 
+                   th:classappend="${currentPage == 0 ? 'disabled' : ''}">Previous</a>
+                <a th:href="@{/audit(page=${currentPage + 1})}" 
+                   class="btn btn-secondary" 
+                   th:classappend="${currentPage + 1 >= totalPages ? 'disabled' : ''}">Next</a>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

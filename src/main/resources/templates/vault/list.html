@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: layout('Vault Credentials', ~{::#page-content})}">
+<body>
+<div id="page-content">
+
+    <!-- Header & Action Bar -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">Encrypted Vault</h2>
+            <p class="text-secondary small mb-0">AES-256-GCM authenticated secret storage with zero-knowledge ownership</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <!-- Export Button (Trigger Modal) -->
+            <button type="button" class="btn btn-secondary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#exportModal">
+                <i class="bi bi-box-arrow-down"></i>
+                <span>Export Vault</span>
+            </button>
+            <!-- Add Item Button -->
+            <a th:href="@{/vault/new}" class="btn btn-primary d-flex align-items-center gap-2">
+                <i class="bi bi-plus-lg"></i>
+                <span>Add Credential</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter & Search Controls Bar -->
+    <div class="sv-card p-3 mb-4">
+        <form th:action="@{/vault}" method="get" class="row g-2 align-items-center">
+            <!-- Search Input -->
+            <div class="col-12 col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary border-opacity-25 text-secondary">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" name="q" class="form-control" placeholder="Search by service, username, or URL..." th:value="${searchQuery}">
+                </div>
+            </div>
+
+            <!-- Category Filter -->
+            <div class="col-6 col-md-3">
+                <select name="category" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Categories</option>
+                    <option th:each="cat : ${categories}" 
+                            th:value="${cat.name()}" 
+                            th:text="${cat.displayName}"
+                            th:selected="${currentCategory != null && currentCategory.name() == cat.name()}">Login</option>
+                </select>
+            </div>
+
+            <!-- Sort By -->
+            <div class="col-6 col-md-2">
+                <select name="sort" class="form-select" onchange="this.form.submit()">
+                    <option value="created" th:selected="${currentSort == 'created'}">Newest First</option>
+                    <option value="title" th:selected="${currentSort == 'title'}">Title (A-Z)</option>
+                    <option value="strength" th:selected="${currentSort == 'strength'}">Weakest First</option>
+                    <option value="updated" th:selected="${currentSort == 'updated'}">Recently Updated</option>
+                </select>
+            </div>
+
+            <!-- Favorites Toggle & Submit -->
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <a th:href="@{/vault(favorites=${!favoritesOnly})}" 
+                   class="btn w-100 d-flex align-items-center justify-content-center gap-1"
+                   th:classappend="${favoritesOnly ? 'btn-warning text-dark' : 'btn-secondary'}">
+                    <i class="bi" th:classappend="${favoritesOnly ? 'bi-star-fill' : 'bi-star'}"></i>
+                    <span class="small fw-semibold">Favorites</span>
+                </a>
+                <button type="submit" class="btn btn-secondary"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Empty State -->
+    <div th:if="${entries.empty}" class="sv-card p-5 text-center my-4">
+        <div class="mb-3">
+            <i class="bi bi-shield-slash fs-1 text-secondary opacity-50"></i>
+        </div>
+        <h4 class="fw-bold text-white mb-2">No Vault Entries Found</h4>
+        <p class="text-secondary small mb-4">No credentials match your active filter criteria or your vault is currently empty.</p>
+        <a th:href="@{/vault/new}" class="btn btn-primary d-inline-flex align-items-center gap-2">
+            <i class="bi bi-plus-lg"></i>
+            <span>Add New Secret</span>
+        </a>
+    </div>
+
+    <!-- Entries Table -->
+    <div th:unless="${entries.empty}" class="sv-card overflow-hidden">
+        <div class="table-responsive">
+            <table class="sv-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"></th>
+                        <th>Title / Service</th>
+                        <th>Category</th>
+                        <th>Username / Email</th>
+                        <th>Password (Encrypted)</th>
+                        <th>Security</th>
+                        <th>Website</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="entry : ${entries}">
+                        <!-- Favorite Toggle -->
+                        <td class="text-center">
+                            <form th:action="@{/vault/{id}/favorite(id=${entry.id})}" method="post" class="m-0">
+                                <button type="submit" class="btn btn-link p-0 text-decoration-none" title="Toggle Favorite">
+                                    <i class="bi" th:classappend="${entry.favorite ? 'bi-star-fill text-warning' : 'bi-star text-secondary opacity-50'}"></i>
+                                </button>
+                            </form>
+                        </td>
+
+                        <!-- Title -->
+                        <td>
+                            <div class="fw-semibold text-white d-flex align-items-center gap-2">
+                                <span th:text="${entry.title}">Google Workspace</span>
+                            </div>
+                            <small class="text-secondary" th:if="${entry.notes != null && !entry.notes.isBlank()}" th:text="${#strings.abbreviate(entry.notes, 40)}">Notes</small>
+                        </td>
+
+                        <!-- Category -->
+                        <td>
+                            <span class="badge badge-secondary" th:text="${entry.category.displayName}">Login</span>
+                        </td>
+
+                        <!-- Username -->
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="font-monospace small text-secondary" th:id="'username-val-' + ${entry.id}" th:text="${entry.username ?: '-'}">admin@work.com</span>
+                                <button th:if="${entry.username != null && !entry.username.isBlank()}" 
+                                        type="button" 
+                                        class="btn btn-link text-secondary p-0" 
+                                        th:data-copy-text="${entry.username}" 
+                                        title="Copy username">
+                                    <i class="bi bi-clipboard" style="font-size: 0.85rem;"></i>
+                                </button>
+                            </div>
+                        </td>
+
+                        <!-- Password with Reveal & Copy -->
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="font-monospace text-secondary" th:id="'pwd-display-' + ${entry.id}">••••••••••••</span>
+                                <button type="button" class="btn btn-link text-secondary p-0 btn-reveal-pwd" th:data-entry-id="${entry.id}" title="Reveal password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-link text-secondary p-0" th:data-copy-target="'pwd-display-' + ${entry.id}" title="Copy password">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </td>
+
+                        <!-- Strength Badge -->
+                        <td>
+                            <span class="badge" th:classappend="${entry.strengthBadgeClass}" th:text="${entry.strengthLabel}">Strong</span>
+                        </td>
+
+                        <!-- Website URL -->
+                        <td>
+                            <a th:if="${entry.websiteUrl != null && !entry.websiteUrl.isBlank()}" 
+                               th:href="${#strings.startsWith(entry.websiteUrl, 'http') ? entry.websiteUrl : 'https://' + entry.websiteUrl}" 
+                               target="_blank" 
+                               rel="noopener noreferrer" 
+                               class="text-info text-decoration-none small d-inline-flex align-items-center gap-1">
+                                <span th:text="${#strings.abbreviate(entry.websiteUrl, 25)}">https://...</span>
+                                <i class="bi bi-box-arrow-up-right" style="font-size: 0.75rem;"></i>
+                            </a>
+                            <span th:unless="${entry.websiteUrl != null && !entry.websiteUrl.isBlank()}" class="text-secondary small">-</span>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a th:href="@{/vault/{id}/edit(id=${entry.id})}" class="btn btn-secondary" title="Edit Entry">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" 
+                                        class="btn btn-secondary text-danger" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#deleteConfirmModal"
+                                        th:data-entry-id="${entry.id}"
+                                        th:data-entry-title="${entry.title}"
+                                        title="Delete Entry">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-danger border-opacity-25">
+                    <h5 class="modal-title text-danger d-flex align-items-center gap-2" id="deleteModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill"></i> Confirm Deletion
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Are you sure you want to permanently delete <strong id="delete-target-title" class="text-white">this entry</strong>?</p>
+                    <p class="small text-secondary mb-0">This operation cannot be undone. All associated cryptographic nonces and ciphertext will be permanently wiped.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="delete-form" method="post">
+                        <button type="submit" class="btn btn-danger">Delete Permanently</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secure Export Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="exportModalLabel">
+                        <i class="bi bi-file-earmark-arrow-down text-info"></i> Secure Vault Data Export
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form th:action="@{/vault/export}" method="get">
+                    <div class="modal-body">
+                        <p class="small text-secondary mb-3">Download a structured archive of your saved credentials for backup or migration purposes.</p>
+
+                        <div class="mb-3">
+                            <label class="form-label">Export Format</label>
+                            <select name="format" class="form-select">
+                                <option value="json" selected>JSON (Structured & Machine-readable)</option>
+                                <option value="csv">CSV (Spreadsheet compatible)</option>
+                            </select>
+                        </div>
+
+                        <div class="p-3 rounded bg-dark border border-danger border-opacity-30 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="includePasswords" value="true" id="chk-export-passwords">
+                                <label class="form-check-label text-warning small fw-semibold" for="chk-export-passwords">
+                                    Include Plaintext Passwords in Export (High Risk)
+                                </label>
+                            </div>
+                            <div class="text-secondary small mt-1" style="font-size: 0.75rem;">
+                                By default, sensitive credentials are excluded. Exporting plaintext secrets creates unencrypted files on your storage device.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-download me-1"></i> Download Export
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

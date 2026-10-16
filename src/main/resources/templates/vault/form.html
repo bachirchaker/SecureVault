@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: layout(${isEdit ? 'Edit Credential' : 'New Credential'}, ~{::#page-content})}">
+<body>
+<div id="page-content">
+
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <!-- Header -->
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <h2 class="fw-bold text-white mb-1" th:text="${isEdit ? 'Edit Vault Item' : 'New Vault Item'}">New Vault Item</h2>
+                    <p class="text-secondary small mb-0">Confidentiality guaranteed via AES-256-GCM zero-knowledge encryption</p>
+                </div>
+                <a th:href="@{/vault}" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Vault
+                </a>
+            </div>
+
+            <!-- Form Card -->
+            <div class="sv-card p-4">
+                <form th:action="${isEdit ? '/vault/' + entryId + '/edit' : '/vault/new'}" th:object="${entry}" method="post">
+                    <!-- Title & Category -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-7">
+                            <label for="title" class="form-label">Service / Item Title <span class="text-danger">*</span></label>
+                            <input type="text" id="title" th:field="*{title}" class="form-control" th:classappend="${#fields.hasErrors('title') ? 'is-invalid' : ''}" placeholder="e.g. GitHub, AWS Console, ProtonMail" required>
+                            <div class="invalid-feedback" th:errors="*{title}">Title is required</div>
+                        </div>
+
+                        <div class="col-12 col-md-5">
+                            <label for="category" class="form-label">Category <span class="text-danger">*</span></label>
+                            <select id="category" th:field="*{category}" class="form-select">
+                                <option th:each="cat : ${categories}" th:value="${cat.name()}" th:text="${cat.displayName}">Login</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Username & Website -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label for="username" class="form-label">Username / Email</label>
+                            <input type="text" id="username" th:field="*{username}" class="form-control" placeholder="user@company.com">
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label for="websiteUrl" class="form-label">Website URL</label>
+                            <input type="text" id="websiteUrl" th:field="*{websiteUrl}" class="form-control" placeholder="https://example.com/login">
+                        </div>
+                    </div>
+
+                    <!-- Password Field with Generator & Strength Meter -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="vault-password-input" class="form-label mb-0">
+                                Password Secret <span th:if="${!isEdit}" class="text-danger">*</span>
+                                <small th:if="${isEdit}" class="text-secondary fw-normal">(Leave blank to keep existing password)</small>
+                            </label>
+                            <button type="button" class="btn btn-link text-info p-0 small text-decoration-none fw-semibold" data-bs-toggle="modal" data-bs-target="#generatorModal">
+                                <i class="bi bi-magic me-1"></i> Generate Strong Password
+                            </button>
+                        </div>
+                        <div class="input-group">
+                            <input type="password" id="vault-password-input" th:field="*{password}" class="form-control font-monospace" th:classappend="${#fields.hasErrors('password') ? 'is-invalid' : ''}" placeholder="Enter or generate password">
+                            <button type="button" class="btn btn-secondary" onclick="togglePasswordVisibility('vault-password-input', this)" title="Show/Hide">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="text-danger small mt-1" th:if="${#fields.hasErrors('password')}" th:errors="*{password}">Password error</div>
+
+                        <!-- Real-time Strength Meter -->
+                        <div class="strength-meter">
+                            <div id="strength-bar" class="strength-meter-bar" style="width: 0%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span id="strength-label" class="small fw-semibold" style="font-size: 0.75rem;"></span>
+                        </div>
+                        <div id="strength-feedback"></div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Secure Notes / Recovery Codes</label>
+                        <textarea id="notes" th:field="*{notes}" class="form-control" rows="3" placeholder="Optional 2FA backup codes, PIN, or security question answers..."></textarea>
+                    </div>
+
+                    <!-- Favorite Checkbox -->
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="favorite" th:field="*{favorite}">
+                            <label class="form-check-label text-white small" for="favorite">
+                                <i class="bi bi-star-fill text-warning me-1"></i> Mark as Favorite
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top border-secondary border-opacity-10">
+                        <a th:href="@{/vault}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary d-flex align-items-center gap-2">
+                            <i class="bi bi-shield-check"></i>
+                            <span th:text="${isEdit ? 'Update Secret' : 'Encrypt & Save'}">Encrypt & Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function togglePasswordVisibility(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    }
+</script>
+</body>
+</html>

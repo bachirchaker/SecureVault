@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: layout('Dashboard', ~{::#page-content})}">
+<body>
+<div id="page-content">
+
+    <!-- Header Section -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">Security Dashboard</h2>
+            <p class="text-secondary small mb-0">Holistic zero-knowledge cryptographic status & vault hygiene metrics</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a th:href="@{/vault/new}" class="btn btn-primary d-flex align-items-center gap-2">
+                <i class="bi bi-plus-lg"></i>
+                <span>Add Credential</span>
+            </a>
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#generatorModal">
+                <i class="bi bi-key-fill text-info me-1"></i> Generate
+            </button>
+        </div>
+    </div>
+
+    <!-- Stat Cards Row -->
+    <div class="row g-3 mb-4">
+        <!-- Total Credentials -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="sv-card sv-card-hover sv-stat-card">
+                <div>
+                    <div class="sv-stat-label">Total Vault Items</div>
+                    <div class="sv-stat-val mt-1" th:text="${stats.totalCredentials}">0</div>
+                    <div class="small text-secondary mt-1"><i class="bi bi-shield-check text-success me-1"></i>AES-256-GCM Encrypted</div>
+                </div>
+                <div class="sv-stat-icon bg-primary bg-opacity-15 text-primary">
+                    <i class="bi bi-safe2"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Health Score -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="sv-card sv-card-hover sv-stat-card">
+                <div>
+                    <div class="sv-stat-label">Security Health</div>
+                    <div class="sv-stat-val mt-1" th:classappend="${stats.healthScore >= 80 ? 'text-success' : (stats.healthScore >= 50 ? 'text-warning' : 'text-danger')}">
+                        <span th:text="${stats.healthScore}">100</span><span class="fs-6">%</span>
+                    </div>
+                    <div class="small text-secondary mt-1">Holistic hygiene index</div>
+                </div>
+                <div class="sv-stat-icon" th:classappend="${stats.healthScore >= 80 ? 'bg-success bg-opacity-15 text-success' : 'bg-warning bg-opacity-15 text-warning'}">
+                    <i class="bi bi-shield-heart"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weak Passwords -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="sv-card sv-card-hover sv-stat-card">
+                <div>
+                    <div class="sv-stat-label">Weak Passwords</div>
+                    <div class="sv-stat-val mt-1" th:classappend="${stats.weakPasswords > 0 ? 'text-warning' : 'text-success'}" th:text="${stats.weakPasswords}">0</div>
+                    <div class="small text-secondary mt-1">Requires rotation</div>
+                </div>
+                <div class="sv-stat-icon bg-warning bg-opacity-15 text-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reused Passwords -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="sv-card sv-card-hover sv-stat-card">
+                <div>
+                    <div class="sv-stat-label">Reused Credentials</div>
+                    <div class="sv-stat-val mt-1" th:classappend="${stats.reusedPasswords > 0 ? 'text-danger' : 'text-success'}" th:text="${stats.reusedPasswords}">0</div>
+                    <div class="small text-secondary mt-1">Vulnerable to credential stuffing</div>
+                </div>
+                <div class="sv-stat-icon bg-danger bg-opacity-15 text-danger">
+                    <i class="bi bi-copy"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Middle Section: Distribution & Recommendations -->
+    <div class="row g-4 mb-4">
+        <!-- Password Strength Distribution Visualizer -->
+        <div class="col-12 col-lg-7">
+            <div class="sv-card p-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold text-white mb-0">Password Strength Distribution</h5>
+                    <span class="badge badge-info" style="font-size: 0.72rem;">NIST SP 800-63B</span>
+                </div>
+                <p class="text-secondary small mb-4">Entropy and resistance breakdown across your personal vault entries.</p>
+
+                <div class="d-flex flex-column gap-3">
+                    <!-- Very Strong -->
+                    <div>
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-white"><i class="bi bi-circle-fill text-success me-2" style="font-size: 0.6rem;"></i>Very Strong (80+ bits entropy)</span>
+                            <span class="text-secondary font-monospace" th:text="${stats.strengthDistribution.get('Very Strong')} + ' items'">0 items</span>
+                        </div>
+                        <div class="progress" style="height: 8px; background-color: #1e293b;">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 th:style="'width: ' + (${stats.totalCredentials > 0 ? (stats.strengthDistribution.get('Very Strong') * 100 / stats.totalCredentials) : 0}) + '%;'"></div>
+                        </div>
+                    </div>
+
+                    <!-- Strong -->
+                    <div>
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-white"><i class="bi bi-circle-fill text-primary me-2" style="font-size: 0.6rem;"></i>Strong (60-80 bits entropy)</span>
+                            <span class="text-secondary font-monospace" th:text="${stats.strengthDistribution.get('Strong')} + ' items'">0 items</span>
+                        </div>
+                        <div class="progress" style="height: 8px; background-color: #1e293b;">
+                            <div class="progress-bar bg-primary" role="progressbar"
+                                 th:style="'width: ' + (${stats.totalCredentials > 0 ? (stats.strengthDistribution.get('Strong') * 100 / stats.totalCredentials) : 0}) + '%;'"></div>
+                        </div>
+                    </div>
+
+                    <!-- Fair -->
+                    <div>
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-white"><i class="bi bi-circle-fill text-info me-2" style="font-size: 0.6rem;"></i>Fair (45-60 bits entropy)</span>
+                            <span class="text-secondary font-monospace" th:text="${stats.strengthDistribution.get('Fair')} + ' items'">0 items</span>
+                        </div>
+                        <div class="progress" style="height: 8px; background-color: #1e293b;">
+                            <div class="progress-bar bg-info" role="progressbar"
+                                 th:style="'width: ' + (${stats.totalCredentials > 0 ? (stats.strengthDistribution.get('Fair') * 100 / stats.totalCredentials) : 0}) + '%;'"></div>
+                        </div>
+                    </div>
+
+                    <!-- Weak & Very Weak -->
+                    <div>
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-white"><i class="bi bi-circle-fill text-danger me-2" style="font-size: 0.6rem;"></i>Weak / Critical (&lt; 45 bits)</span>
+                            <span class="text-secondary font-monospace" th:text="(${stats.strengthDistribution.get('Weak')} + ${stats.strengthDistribution.get('Very Weak')}) + ' items'">0 items</span>
+                        </div>
+                        <div class="progress" style="height: 8px; background-color: #1e293b;">
+                            <div class="progress-bar bg-danger" role="progressbar"
+                                 th:style="'width: ' + (${stats.totalCredentials > 0 ? ((stats.strengthDistribution.get('Weak') + stats.strengthDistribution.get('Very Weak')) * 100 / stats.totalCredentials) : 0}) + '%;'"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Pills -->
+                <div class="mt-4 pt-3 border-top border-secondary border-opacity-10 d-flex flex-wrap gap-2">
+                    <span class="badge badge-secondary px-3 py-2" th:each="entry : ${stats.categoryCounts}">
+                        <span th:text="${entry.key}">Category</span>: <strong class="text-white" th:text="${entry.value}">0</strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Recommendations -->
+        <div class="col-12 col-lg-5">
+            <div class="sv-card p-4 h-100 d-flex flex-column">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <i class="bi bi-shield-lock-fill text-info fs-5"></i>
+                    <h5 class="fw-bold text-white mb-0">Security Action Center</h5>
+                </div>
+                <p class="text-secondary small mb-3">Targeted mitigation steps derived from your current cryptographic posture.</p>
+
+                <div class="d-flex flex-column gap-2 mb-auto">
+                    <div th:each="rec : ${stats.securityRecommendations}" class="p-3 rounded bg-dark border border-secondary border-opacity-15 d-flex align-items-start gap-3">
+                        <i class="bi bi-check2-circle text-info fs-5 mt-n1 flex-shrink-0"></i>
+                        <span class="small text-white" th:text="${rec}">Recommendation message.</span>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-top border-secondary border-opacity-10">
+                    <a th:href="@{/vault?favorites=true}" class="btn btn-secondary btn-sm w-100 mb-2">
+                        <i class="bi bi-star-fill text-warning me-1"></i> View Starred Entries
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Section: Recently Added Vault Items -->
+    <div class="sv-card p-4 mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="fw-bold text-white mb-0">Recently Modified Credentials</h5>
+            <a th:href="@{/vault}" class="text-info text-decoration-none small fw-semibold">View All Items <i class="bi bi-arrow-right"></i></a>
+        </div>
+
+        <div th:if="${stats.recentEntries.empty}" class="text-center py-4 text-secondary">
+            <i class="bi bi-safe fs-1 d-block mb-2 text-secondary opacity-50"></i>
+            <p class="mb-0">No vault entries yet. Add your first credential to get started.</p>
+        </div>
+
+        <div th:unless="${stats.recentEntries.empty}" class="table-responsive">
+            <table class="sv-table">
+                <thead>
+                    <tr>
+                        <th>Service / Title</th>
+                        <th>Category</th>
+                        <th>Username</th>
+                        <th>Password</th>
+                        <th>Strength</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${stats.recentEntries}">
+                        <td class="fw-semibold text-white">
+                            <i class="bi bi-star-fill text-warning me-2" th:if="${item.favorite}"></i>
+                            <span th:text="${item.title}">Google</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-secondary" th:text="${item.category.displayName}">Login</span>
+                        </td>
+                        <td class="text-secondary small font-monospace" th:text="${item.username ?: '-'}">user@example.com</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="font-monospace text-secondary" th:id="'pwd-display-' + ${item.id}">••••••••••••</span>
+                                <button type="button" class="btn btn-link text-secondary p-0 btn-reveal-pwd" th:data-entry-id="${item.id}" title="Reveal password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge" th:classappend="${item.strengthBadgeClass}" th:text="${item.strengthLabel}">Strong</span>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a th:href="@{/vault/{id}/edit(id=${item.id})}" class="btn btn-secondary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

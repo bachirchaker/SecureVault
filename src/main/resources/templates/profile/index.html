@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: layout('Profile & Keys', ~{::#page-content})}">
+<body>
+<div id="page-content">
+
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">Account & Key Management</h2>
+            <p class="text-secondary small mb-0">Master credentials, envelope cryptographic parameters, and account security</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Profile & Security Summary -->
+        <div class="col-12 col-lg-5">
+            <div class="sv-card p-4 mb-4">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="rounded-circle bg-primary bg-opacity-25 text-info d-flex align-items-center justify-content-center fw-bold fs-4" style="width: 56px; height: 56px;">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold text-white mb-0" th:text="${profile.username}">username</h5>
+                        <span class="text-secondary small font-monospace" th:text="${profile.email}">user@example.com</span>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column gap-3">
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary border-opacity-10">
+                        <span class="text-secondary small">Role</span>
+                        <span class="badge badge-info" th:text="${profile.role}">USER</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary border-opacity-10">
+                        <span class="text-secondary small">Stored Credentials</span>
+                        <span class="text-white small fw-bold" th:text="${profile.totalVaultEntries}">0</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary border-opacity-10">
+                        <span class="text-secondary small">Vault Health Index</span>
+                        <span class="text-success small fw-bold" th:text="${profile.healthScore} + '%'">100%</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2">
+                        <span class="text-secondary small">Member Since</span>
+                        <span class="text-secondary small font-monospace" th:text="${#temporals.format(profile.createdAt, 'yyyy-MM-dd')}">2026-10-16</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cryptographic Architecture Card -->
+            <div class="sv-card p-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <i class="bi bi-cpu-fill text-info fs-5"></i>
+                    <h6 class="fw-bold text-white mb-0">Cryptographic Scheme</h6>
+                </div>
+                <ul class="list-unstyled small text-secondary d-flex flex-column gap-2 mb-0">
+                    <li><strong class="text-white">Vault Cipher:</strong> AES-256-GCM (AEAD)</li>
+                    <li><strong class="text-white">IV / Nonce:</strong> 96-bit (12-byte) CSPRNG unique per item</li>
+                    <li><strong class="text-white">Authentication Tag:</strong> 128-bit MAC validation</li>
+                    <li><strong class="text-white">Master Hashing:</strong> BCrypt (Cost factor 12) / Argon2id</li>
+                    <li><strong class="text-white">Session Protection:</strong> Strict SameSite & Session Fixation Shield</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Change Master Password Form -->
+        <div class="col-12 col-lg-7">
+            <div class="sv-card p-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <i class="bi bi-shield-lock text-info fs-5"></i>
+                    <h5 class="fw-bold text-white mb-0">Change Master Password</h5>
+                </div>
+                <p class="text-secondary small mb-4">
+                    Your master password unlocks access to all encrypted secrets in your vault. Choose a unique, high-entropy passphrase.
+                </p>
+
+                <form th:action="@{/profile/change-password}" th:object="${changePassword}" method="post">
+                    <!-- Current Password -->
+                    <div class="mb-3">
+                        <label for="currentPassword" class="form-label">Current Master Password <span class="text-danger">*</span></label>
+                        <input type="password" id="currentPassword" th:field="*{currentPassword}" class="form-control" th:classappend="${#fields.hasErrors('currentPassword') ? 'is-invalid' : ''}" placeholder="••••••••••••" required>
+                        <div class="invalid-feedback" th:errors="*{currentPassword}">Current password error</div>
+                    </div>
+
+                    <!-- New Password -->
+                    <div class="mb-3">
+                        <label for="vault-password-input" class="form-label">New Master Password <span class="text-danger">*</span></label>
+                        <input type="password" id="vault-password-input" th:field="*{newPassword}" class="form-control" th:classappend="${#fields.hasErrors('newPassword') ? 'is-invalid' : ''}" placeholder="Min 8 chars, uppercase, lowercase, number, symbol" required>
+                        <div class="invalid-feedback" th:errors="*{newPassword}">New password error</div>
+
+                        <!-- Real-time strength meter -->
+                        <div class="strength-meter">
+                            <div id="strength-bar" class="strength-meter-bar" style="width: 0%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span id="strength-label" class="small fw-semibold" style="font-size: 0.75rem;"></span>
+                        </div>
+                        <div id="strength-feedback"></div>
+                    </div>
+
+                    <!-- Confirm New Password -->
+                    <div class="mb-4">
+                        <label for="confirmNewPassword" class="form-label">Confirm New Master Password <span class="text-danger">*</span></label>
+                        <input type="password" id="confirmNewPassword" th:field="*{confirmNewPassword}" class="form-control" th:classappend="${#fields.hasErrors('confirmNewPassword') ? 'is-invalid' : ''}" placeholder="Repeat new master password" required>
+                        <div class="invalid-feedback" th:errors="*{confirmNewPassword}">Password confirmation error</div>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary d-flex align-items-center gap-2">
+                            <i class="bi bi-check2-circle"></i>
+                            <span>Update Master Password</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>
